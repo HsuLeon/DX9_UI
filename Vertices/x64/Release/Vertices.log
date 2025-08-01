@@ -1,0 +1,19 @@
+﻿  Vertices.cpp
+D:\Projects\Leon\DX9_UI\Vertices.cpp(41,31): warning C4459: 'hWnd' 的宣告會隱藏全域宣告
+      D:\Projects\Leon\DX9_UI\Vertices.cpp(8,6):
+      請參閱 'hWnd' 的宣告
+  
+D:\Projects\Leon\DX9_UI\Vertices.cpp(55,19): warning C4459: 'hWnd' 的宣告會隱藏全域宣告
+      D:\Projects\Leon\DX9_UI\Vertices.cpp(8,6):
+      請參閱 'hWnd' 的宣告
+  
+D:\Projects\Leon\DX9_UI\Vertices.cpp(125,9): warning C4189: 'monitorIndex': 已初始化區域變數，但並未參考
+D:\Projects\Leon\DX9_UI\Vertices.cpp(140,30): warning C4100: 'hInstance': 未參考的參數
+D:\Projects\Leon\DX9_UI\Vertices.cpp(161,9): warning C4189: 'windowY': 已初始化區域變數，但並未參考
+D:\Projects\Leon\DX9_UI\Vertices.cpp(160,9): warning C4189: 'windowX': 已初始化區域變數，但並未參考
+  正在產生程式碼
+  Previous IPDB not found, fall back to full compilation.
+  All 10 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  已完成程式碼產生
+  Vertices.vcxproj -> D:\Projects\Leon\DX9_UI\x64\Release\Vertices.exe
+  'pwsh.exe' 不是內部或外部命令、可執行的程式或批次檔。
