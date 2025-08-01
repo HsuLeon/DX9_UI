@@ -3,6 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.14.36310.24
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Vertices", "Vertices\Vertices.vcxproj", "{D3D09002-96D0-4629-88B8-122C0256058C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{641B4537-71B4-34B4-ADF1-051FE220E9BC} = {641B4537-71B4-34B4-ADF1-051FE220E9BC}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "spine-cpp", "spine-cpp\spine-cpp.vcxproj", "{641B4537-71B4-34B4-ADF1-051FE220E9BC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,8 +31,23 @@ Global
 		{D3D09002-96D0-4629-88B8-122C0256058C}.Release|x64.Build.0 = Release|x64
 		{D3D09002-96D0-4629-88B8-122C0256058C}.Release|x86.ActiveCfg = Release|Win32
 		{D3D09002-96D0-4629-88B8-122C0256058C}.Release|x86.Build.0 = Release|Win32
+		{641B4537-71B4-34B4-ADF1-051FE220E9BC}.Debug|x64.ActiveCfg = Debug|x64
+		{641B4537-71B4-34B4-ADF1-051FE220E9BC}.Debug|x64.Build.0 = Debug|x64
+		{641B4537-71B4-34B4-ADF1-051FE220E9BC}.Debug|x86.ActiveCfg = Debug|Win32
+		{641B4537-71B4-34B4-ADF1-051FE220E9BC}.Debug|x86.Build.0 = Debug|Win32
+		{641B4537-71B4-34B4-ADF1-051FE220E9BC}.Profile|x64.ActiveCfg = Release|Win32
+		{641B4537-71B4-34B4-ADF1-051FE220E9BC}.Profile|x64.Build.0 = Release|Win32
+		{641B4537-71B4-34B4-ADF1-051FE220E9BC}.Profile|x86.ActiveCfg = Release|Win32
+		{641B4537-71B4-34B4-ADF1-051FE220E9BC}.Profile|x86.Build.0 = Release|Win32
+		{641B4537-71B4-34B4-ADF1-051FE220E9BC}.Release|x64.ActiveCfg = Release|x64
+		{641B4537-71B4-34B4-ADF1-051FE220E9BC}.Release|x64.Build.0 = Release|x64
+		{641B4537-71B4-34B4-ADF1-051FE220E9BC}.Release|x86.ActiveCfg = Release|Win32
+		{641B4537-71B4-34B4-ADF1-051FE220E9BC}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0956B595-7B9F-4379-B8E3-48DAFD539F67}
 	EndGlobalSection
 EndGlobal
