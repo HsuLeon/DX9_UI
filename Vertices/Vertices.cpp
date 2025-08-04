@@ -1,4 +1,4 @@
-#include <d3d9.h>
+ï»¿#include <d3d9.h>
 #include <d3dx9.h>
 #pragma warning( disable : 4996 ) // disable deprecated warning 
 #include <strsafe.h>
@@ -13,26 +13,34 @@
 
 LPDIRECT3D9 g_pD3D = nullptr;
 LPDIRECT3DDEVICE9 g_pd3dDevice = nullptr;
-LPDIRECT3DTEXTURE9 g_pTexture = nullptr;
+LPDIRECT3DTEXTURE9 renderTexture = NULL;
+LPDIRECT3DSURFACE9 renderSurface = NULL;
+LPD3DXSPRITE sprite = NULL;
+LPDIRECT3DSURFACE9 backBuffer = NULL;
+
+
 HWND hWnd = nullptr;
+spine::SkeletonDrawable* g_pSkeletonDrawable = nullptr;
+float g_fX = 0;
+float g_fY = 0;
 
 int windowWidth = 800;
 int windowHeight = 600;
-D3DPRESENT_PARAMETERS d3dpp{}; // ¥þ°ìÅÜ¼Æ
+D3DPRESENT_PARAMETERS d3dpp{}; // å…¨åŸŸè®Šæ•¸
 
 void ResetDevice()
 {
     if (!g_pd3dDevice) return;
 
-    // ­«·s³]©w present parameters
+    // é‡æ–°è¨­å®š present parameters
     d3dpp.BackBufferWidth = windowWidth;
     d3dpp.BackBufferHeight = windowHeight;
 
     HRESULT hr = g_pd3dDevice->Reset(&d3dpp);
     if (FAILED(hr)) {
-        // Reset ¥¢±Ñ¥i¯à¬O¸Ë¸mÁÙ¦b¨Ï¥Î¤¤¡A³q±`­n³B²z DEVICELOST ª¬ªp
+        // Reset å¤±æ•—å¯èƒ½æ˜¯è£ç½®é‚„åœ¨ä½¿ç”¨ä¸­ï¼Œé€šå¸¸è¦è™•ç† DEVICELOST ç‹€æ³
         if (hr == D3DERR_DEVICELOST) {
-            // µ¥«Ý¸Ë¸m¥i­«³]
+            // ç­‰å¾…è£ç½®å¯é‡è¨­
             while (g_pd3dDevice->TestCooperativeLevel() == D3DERR_DEVICELOST) {
                 Sleep(100);
             }
@@ -51,6 +59,41 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         windowWidth = LOWORD(lParam);
         windowHeight = HIWORD(lParam);
         if (g_pd3dDevice) ResetDevice();
+        return 0;
+    case WM_KEYDOWN:
+        switch (wParam) {
+        case '1':
+            // ä½ å¯ä»¥åœ¨é€™è£¡è¨­å®šå‹•ç•«æˆ–åŸ·è¡Œå…¶ä»–é‚è¼¯
+            g_pSkeletonDrawable->animationState->setAnimation(0, "aim", true);
+            break;
+        case '2':
+            g_pSkeletonDrawable->animationState->setAnimation(0, "jump", false);
+            g_pSkeletonDrawable->animationState->addAnimation(0, "run", true, 0);
+            break;
+        case '3':
+            g_pSkeletonDrawable->animationState->setAnimation(0, "shoot", false);
+            g_pSkeletonDrawable->animationState->addAnimation(0, "run", true, 0);
+            break;
+        case '4':
+            g_pSkeletonDrawable->animationState->setAnimation(0, "walk", true);
+            break;
+        case '5':
+            g_pSkeletonDrawable->animationState->setAnimation(0, "portal", false);
+            g_pSkeletonDrawable->animationState->addAnimation(0, "run", true, 0);
+            break;
+        case 37:
+            g_fX -= 1.0f;
+            break;
+        case 38:
+            g_fY -= 1.0f;
+            break;
+        case 39:
+            g_fX += 1.0f;
+            break;
+        case 40:
+            g_fY += 1.0f;
+            break;
+        }
         return 0;
     }
     return DefWindowProc(hWnd, msg, wParam, lParam);
@@ -74,75 +117,28 @@ void InitD3D(HWND hWnd)
         D3DCREATE_SOFTWARE_VERTEXPROCESSING,
         &d3dpp,
         &g_pd3dDevice);
-
-    // Use D3DX to create a texture from a file based image
-    if (FAILED(D3DXCreateTextureFromFile(g_pd3dDevice, L"data\\banana.bmp", &g_pTexture)))
-    {
-        MessageBox(NULL, L"Could not find banana.bmp", L"Textures.exe", MB_OK);
-    }
 }
 
-void RenderFrame(spine::SkeletonDrawable* pDrawable)
+void RenderToTexture()
 {
-    if (!g_pd3dDevice) return;
 
-    g_pd3dDevice->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 100), 1.0f, 0);
-    if (SUCCEEDED(g_pd3dDevice->BeginScene()))
-    {
-        //g_pd3dDevice->SetTexture(0, g_pTexture);
-        //g_pd3dDevice->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-        //g_pd3dDevice->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-        //g_pd3dDevice->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-        //g_pd3dDevice->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-
-        //float rectWidth = 200;
-        //float rectHeight = 150;
-
-        //float centerX = windowWidth / 2.0f;
-        //float centerY = windowHeight / 2.0f;
-
-        //float left = centerX - rectWidth / 2.0f;
-        //float right = centerX + rectWidth / 2.0f;
-        //float top = centerY - rectHeight / 2.0f;
-        //float bottom = centerY + rectHeight / 2.0f;
-
-        //CUSTOMVERTEX vertices[] = {
-        //    { left,  top,    0.0f, 1.0f, D3DCOLOR_XRGB(255, 0, 0), 0.0f, 0.0f },
-        //    { right, top,    0.0f, 1.0f, D3DCOLOR_XRGB(0, 255, 0), 1.0f, 0.0f },
-        //    { left,  bottom, 0.0f, 1.0f, D3DCOLOR_XRGB(0, 0, 255), 0.0f, 1.0f },
-        //    { right, bottom, 0.0f, 1.0f, D3DCOLOR_XRGB(255, 255, 0), 1.0f, 1.0f },
-        //};
-
-        //short indices[] = { 0, 1, 2, 2, 1, 3 };
-
-        //g_pd3dDevice->SetFVF(D3DFVF_CUSTOMVERTEX);
-        //g_pd3dDevice->DrawIndexedPrimitiveUP(
-        //    D3DPT_TRIANGLELIST,
-        //    0,
-        //    4,
-        //    2,
-        //    indices,
-        //    D3DFMT_INDEX16,
-        //    vertices,
-        //    sizeof(CUSTOMVERTEX)
-        //);
-
-        pDrawable->draw(g_pd3dDevice);
-
-        g_pd3dDevice->EndScene();
-    }
-
-    g_pd3dDevice->Present(nullptr, nullptr, nullptr, nullptr);
 }
 
 void CleanD3D()
 {
-    if (g_pTexture) g_pTexture->Release();
     if (g_pd3dDevice) g_pd3dDevice->Release();
     if (g_pD3D) g_pD3D->Release();
 }
 
-// §ä¥X²Ä¤G­Ó¿Ã¹õªº HMONITOR
+void InitRenderTarget()
+{
+    g_pd3dDevice->CreateTexture(512, 512, 1, D3DUSAGE_RENDERTARGET,
+        D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &renderTexture, NULL);
+
+    renderTexture->GetSurfaceLevel(0, &renderSurface);
+}
+
+// æ‰¾å‡ºç¬¬äºŒå€‹èž¢å¹•çš„ HMONITOR
 HMONITOR GetSecondMonitor()
 {
     int monitorIndex = 0;
@@ -150,9 +146,9 @@ HMONITOR GetSecondMonitor()
     EnumDisplayMonitors(nullptr, nullptr,
         [](HMONITOR hMon, HDC, LPRECT, LPARAM lParam) -> BOOL {
             int* index = reinterpret_cast<int*>(lParam);
-            if (*index == 1) { // ²Ä¤G­Ó¿Ã¹õ¡]¯Á¤Þ±q0¶}©l¡^
+            if (*index == 1) { // ç¬¬äºŒå€‹èž¢å¹•ï¼ˆç´¢å¼•å¾ž0é–‹å§‹ï¼‰
                 *(HMONITOR*)lParam = hMon;
-                return FALSE; // §ä¨ì´N°±¤î¦CÁ|
+                return FALSE; // æ‰¾åˆ°å°±åœæ­¢åˆ—èˆ‰
             }
             (*index)++;
             return TRUE;
@@ -167,20 +163,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
         WINDOW_CLASS_NAME, nullptr };
     RegisterClassEx(&wc);
 
-    // §ä²Ä¤G­Ó¿Ã¹õ
+    // æ‰¾ç¬¬äºŒå€‹èž¢å¹•
     HMONITOR secondMon = GetSecondMonitor();
     MONITORINFO mi = { sizeof(mi) };
     if (!secondMon || !GetMonitorInfo(secondMon, &mi)) {
-        MessageBox(nullptr, L"§ä¤£¨ì²Ä¤G­Ó¿Ã¹õ¡A±N¨Ï¥Î¥D¿Ã¹õ¡C", L"Äµ§i", MB_ICONWARNING);
+        MessageBox(nullptr, L"æ‰¾ä¸åˆ°ç¬¬äºŒå€‹èž¢å¹•ï¼Œå°‡ä½¿ç”¨ä¸»èž¢å¹•ã€‚", L"è­¦å‘Š", MB_ICONWARNING);
         secondMon = MonitorFromWindow(nullptr, MONITOR_DEFAULTTOPRIMARY);
         GetMonitorInfo(secondMon, &mi);
     }
 
-    // ¨ú±o¿Ã¹õ¸ÑªR«×
+    // å–å¾—èž¢å¹•è§£æžåº¦
     int screenWidth = GetSystemMetrics(SM_CXSCREEN);
     int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
-    // ­pºâÅýµøµ¡¥X²{¦b¿Ã¹õ¥¿¤¤¥¡ªº¦ì¸m
+    // è¨ˆç®—è®“è¦–çª—å‡ºç¾åœ¨èž¢å¹•æ­£ä¸­å¤®çš„ä½ç½®
     int windowX = (screenWidth - windowWidth) / 2;
     int windowY = (screenHeight - windowHeight) / 2;
 
@@ -196,20 +192,35 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
 
+    bool bTest = true;
+    std::string atlasPath = bTest ? "data/test/HCG-SSR-02.atlas" : "data/spineboy-pma/spineboy-pma.atlas";
+    std::string jsonPath = bTest ? "data/test/HCG-SSR-02.json" : "data/spineboy-pma/spineboy-pro.json";
+
     spine::DX9TextureLoader textureLoader(g_pd3dDevice);
-    spine::Atlas atlas("data/spineboy-pma/spineboy-pma.atlas", &textureLoader);
+    spine::Atlas atlas(atlasPath.c_str(), &textureLoader);
     spine::AtlasAttachmentLoader attachmentLoader(&atlas);
     spine::SkeletonJson json(&attachmentLoader);
-    json.setScale(0.5f);
-    spine::SkeletonData* skeletonData = json.readSkeletonDataFile("data/spineboy-pma/spineboy-pro.json");
+    json.setScale(0.1f);
+    spine::SkeletonData* skeletonData = json.readSkeletonDataFile(jsonPath.c_str());
+    //spine::Skin* pSkin = skeletonData->findSkin("03_clothes");
+    //skeletonData->setDefaultSkin(pSkin);
     spine::SkeletonDrawable drawable(skeletonData);
     drawable.usePremultipliedAlpha = true;
     drawable.animationState->getData()->setDefaultMix(0.2f);
     drawable.skeleton->setPosition(400, 500);
     drawable.skeleton->setToSetupPose();
-    drawable.animationState->setAnimation(0, "portal", true);
-    drawable.animationState->addAnimation(0, "run", true, 0);
+    if (bTest)
+    {
+        drawable.animationState->setAnimation(0, "01_05_in", true);
+        drawable.animationState->addAnimation(0, "01_05_in", true, 0);
+    }
+    else
+    {
+        drawable.animationState->setAnimation(0, "portal", true);
+        drawable.animationState->addAnimation(0, "run", true, 0);
+    }
     drawable.update(0, spine::Physics_Update);
+	g_pSkeletonDrawable = &drawable;
 
     DWORD lastFrameTime = ::timeGetTime();
     MSG msg{};
@@ -222,14 +233,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
         }
         else
         {
-
             DWORD nowTime = ::timeGetTime();
             double deltaTime = (nowTime - lastFrameTime) / 1000.0f;
             lastFrameTime = nowTime;
 
             drawable.update(deltaTime, spine::Physics_Update);
-
-            RenderFrame(&drawable);
+            if (g_pd3dDevice)
+            {
+                g_pd3dDevice->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 100), 1.0f, 0);
+                if (SUCCEEDED(g_pd3dDevice->BeginScene()))
+                {
+                    drawable.draw(g_pd3dDevice, g_fX, g_fY);
+                    g_pd3dDevice->EndScene();
+                }
+                g_pd3dDevice->Present(nullptr, nullptr, nullptr, nullptr);
+            }
         }
     }
 
