@@ -15,14 +15,15 @@ LPDIRECT3D9 g_pD3D = nullptr;
 LPDIRECT3DDEVICE9 g_pd3dDevice = nullptr;
 LPDIRECT3DTEXTURE9 renderTexture = NULL;
 LPDIRECT3DSURFACE9 renderSurface = NULL;
+LPDIRECT3DSURFACE9 pSrcBackBuffer = NULL;
+LPDIRECT3DSURFACE9 pSrcZBuffer = NULL;
 LPD3DXSPRITE sprite = NULL;
-LPDIRECT3DSURFACE9 backBuffer = NULL;
+int tetureWidth = 512;
+int tetureHeight = 512;
 
 
 HWND hWnd = nullptr;
 spine::SkeletonDrawable* g_pSkeletonDrawable = nullptr;
-float g_fX = 0;
-float g_fY = 0;
 
 int windowWidth = 800;
 int windowHeight = 600;
@@ -82,16 +83,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             g_pSkeletonDrawable->animationState->addAnimation(0, "run", true, 0);
             break;
         case 37:
-            g_fX -= 1.0f;
+            g_pSkeletonDrawable->skeleton->setX(g_pSkeletonDrawable->skeleton->getX() - 1.0f);
             break;
         case 38:
-            g_fY -= 1.0f;
+            g_pSkeletonDrawable->skeleton->setY(g_pSkeletonDrawable->skeleton->getY() - 1.0f);
             break;
         case 39:
-            g_fX += 1.0f;
+            g_pSkeletonDrawable->skeleton->setX(g_pSkeletonDrawable->skeleton->getX() + 1.0f);
             break;
         case 40:
-            g_fY += 1.0f;
+            g_pSkeletonDrawable->skeleton->setY(g_pSkeletonDrawable->skeleton->getY() +- 1.0f);
             break;
         }
         return 0;
@@ -101,13 +102,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 void InitD3D(HWND hWnd)
 {
-    ZeroMemory(&d3dpp, sizeof(d3dpp));
+    // Set up the presentation parameters
+    SecureZeroMemory(&d3dpp, sizeof(d3dpp));
     d3dpp.Windowed = TRUE;
-    d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-    d3dpp.hDeviceWindow = hWnd;
-    d3dpp.BackBufferFormat = D3DFMT_UNKNOWN;
+    d3dpp.BackBufferCount = 1;
+    d3dpp.MultiSampleType = D3DMULTISAMPLE_NONE;
+    d3dpp.SwapEffect = D3DSWAPEFFECT_COPY;
+
+    d3dpp.EnableAutoDepthStencil = TRUE;
+    d3dpp.AutoDepthStencilFormat = D3DFMT_D16;
     d3dpp.BackBufferWidth = windowWidth;
     d3dpp.BackBufferHeight = windowHeight;
+    d3dpp.BackBufferFormat = D3DFMT_X8R8G8B8;
+    d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
 
     g_pD3D = Direct3DCreate9(D3D_SDK_VERSION);
     g_pD3D->CreateDevice(
@@ -119,23 +126,22 @@ void InitD3D(HWND hWnd)
         &g_pd3dDevice);
 }
 
-void RenderToTexture()
-{
-
-}
-
 void CleanD3D()
 {
+    if (sprite) sprite->Release();
+    if (renderSurface) renderSurface->Release();
+    if (renderTexture) renderTexture->Release();
     if (g_pd3dDevice) g_pd3dDevice->Release();
     if (g_pD3D) g_pD3D->Release();
 }
 
 void InitRenderTarget()
 {
-    g_pd3dDevice->CreateTexture(512, 512, 1, D3DUSAGE_RENDERTARGET,
-        D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &renderTexture, NULL);
+    HRESULT hr = g_pd3dDevice->GetRenderTarget(0, &pSrcBackBuffer);
+    hr = g_pd3dDevice->GetDepthStencilSurface(&pSrcZBuffer);
 
-    renderTexture->GetSurfaceLevel(0, &renderSurface);
+    hr = g_pd3dDevice->CreateTexture(tetureWidth, tetureHeight, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &renderTexture, NULL);
+    hr = renderTexture->GetSurfaceLevel(0, &renderSurface);
 }
 
 // 找出第二個螢幕的 HMONITOR
@@ -192,6 +198,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
 
+    InitRenderTarget();
+
+    HRESULT hr = D3DXCreateSprite(g_pd3dDevice, &sprite);
+
     bool bTest = true;
     std::string atlasPath = bTest ? "data/test/HCG-SSR-02.atlas" : "data/spineboy-pma/spineboy-pma.atlas";
     std::string jsonPath = bTest ? "data/test/HCG-SSR-02.json" : "data/spineboy-pma/spineboy-pro.json";
@@ -237,13 +247,50 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
             double deltaTime = (nowTime - lastFrameTime) / 1000.0f;
             lastFrameTime = nowTime;
 
-            drawable.update(deltaTime, spine::Physics_Update);
+            g_pSkeletonDrawable->update(deltaTime, spine::Physics_Update);
             if (g_pd3dDevice)
             {
+                // 🔁 Render to texture
+                HRESULT hr = g_pd3dDevice->SetRenderTarget(0, renderSurface);
+                hr = g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, 0x0, 1.0f, 0);
+                if (SUCCEEDED(g_pd3dDevice->BeginScene())) {
+                    // 🔷 在 render target 上畫圖形
+                    g_pSkeletonDrawable->draw(g_pd3dDevice);
+                    g_pd3dDevice->EndScene();
+                }
+
+                // 🔁 回到 backbuffer
+                g_pd3dDevice->SetRenderTarget(0, pSrcBackBuffer);
+                g_pd3dDevice->SetDepthStencilSurface(pSrcZBuffer);
                 g_pd3dDevice->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 100), 1.0f, 0);
                 if (SUCCEEDED(g_pd3dDevice->BeginScene()))
                 {
-                    drawable.draw(g_pd3dDevice, g_fX, g_fY);
+                    sprite->Begin(D3DXSPRITE_ALPHABLEND);
+
+                    // 目前視窗大小
+                    float winWidth = (float)windowWidth;
+                    float winHeight = (float)windowHeight;
+                    // 計算寬高比例（保持不變形）
+					float scale = winWidth / tetureWidth < winHeight / tetureHeight ? winWidth / tetureWidth : winHeight / tetureHeight;
+                    //scale *= 0.5f;
+                    // 計算實際縮放後大小
+                    float scaledWidth = tetureWidth * scale;
+                    float scaledHeight = tetureHeight * scale;
+                    // 計算置中偏移量
+                    float offsetX = 0.0f;
+                    float offsetY = 0.0f;
+                    // 建立 2D 轉換矩陣
+                    D3DXMATRIX matTrans, matScale;
+                    D3DXMatrixScaling(&matScale, scale, scale, 1.0f);
+                    D3DXMatrixTranslation(&matTrans, offsetX, offsetY, 0.0f);
+                    D3DXMATRIX matFinal = matScale * matTrans;
+                    // 套用變換矩陣
+                    sprite->SetTransform(&matFinal);
+                    // 畫整張貼圖
+                    sprite->Draw(renderTexture, nullptr, nullptr, nullptr, D3DCOLOR_XRGB(255, 255, 255));
+
+                    sprite->End();
+
                     g_pd3dDevice->EndScene();
                 }
                 g_pd3dDevice->Present(nullptr, nullptr, nullptr, nullptr);
