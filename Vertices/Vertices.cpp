@@ -65,34 +65,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         switch (wParam) {
         case '1':
             // 你可以在這裡設定動畫或執行其他邏輯
-            g_pSkeletonDrawable->animationState->setAnimation(0, "aim", true);
+            g_pSkeletonDrawable->getAnimationState()->setAnimation(0, "aim", true);
             break;
         case '2':
-            g_pSkeletonDrawable->animationState->setAnimation(0, "jump", false);
-            g_pSkeletonDrawable->animationState->addAnimation(0, "run", true, 0);
+            g_pSkeletonDrawable->getAnimationState()->setAnimation(0, "jump", false);
+            g_pSkeletonDrawable->getAnimationState()->addAnimation(0, "run", true, 0);
             break;
         case '3':
-            g_pSkeletonDrawable->animationState->setAnimation(0, "shoot", false);
-            g_pSkeletonDrawable->animationState->addAnimation(0, "run", true, 0);
+            g_pSkeletonDrawable->getAnimationState()->setAnimation(0, "shoot", false);
+            g_pSkeletonDrawable->getAnimationState()->addAnimation(0, "run", true, 0);
             break;
         case '4':
-            g_pSkeletonDrawable->animationState->setAnimation(0, "walk", true);
+            g_pSkeletonDrawable->getAnimationState()->setAnimation(0, "walk", true);
             break;
         case '5':
-            g_pSkeletonDrawable->animationState->setAnimation(0, "portal", false);
-            g_pSkeletonDrawable->animationState->addAnimation(0, "run", true, 0);
+            g_pSkeletonDrawable->getAnimationState()->setAnimation(0, "portal", false);
+            g_pSkeletonDrawable->getAnimationState()->addAnimation(0, "run", true, 0);
             break;
         case 37:
-            g_pSkeletonDrawable->skeleton->setX(g_pSkeletonDrawable->skeleton->getX() - 1.0f);
+            g_pSkeletonDrawable->setX(g_pSkeletonDrawable->getX() - 1.0f);
             break;
         case 38:
-            g_pSkeletonDrawable->skeleton->setY(g_pSkeletonDrawable->skeleton->getY() - 1.0f);
+            g_pSkeletonDrawable->setY(g_pSkeletonDrawable->getY() - 1.0f);
             break;
         case 39:
-            g_pSkeletonDrawable->skeleton->setX(g_pSkeletonDrawable->skeleton->getX() + 1.0f);
+            g_pSkeletonDrawable->setX(g_pSkeletonDrawable->getX() + 1.0f);
             break;
         case 40:
-            g_pSkeletonDrawable->skeleton->setY(g_pSkeletonDrawable->skeleton->getY() +- 1.0f);
+            g_pSkeletonDrawable->setY(g_pSkeletonDrawable->getY() + 1.0f);
             break;
         }
         return 0;
@@ -121,9 +121,17 @@ void InitD3D(HWND hWnd)
         D3DADAPTER_DEFAULT,
         D3DDEVTYPE_HAL,
         hWnd,
-        D3DCREATE_SOFTWARE_VERTEXPROCESSING,
+        D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_MULTITHREADED,
+        //D3DCREATE_SOFTWARE_VERTEXPROCESSING,
         &d3dpp,
         &g_pd3dDevice);
+
+    D3DCAPS9 caps;
+    g_pD3D->GetDeviceCaps(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, &caps);
+    if (caps.MaxTextureWidth < 1024 || caps.MaxTextureHeight < 1024)
+    {
+        MessageBox(NULL, L"顯示卡不支援 1024x1024 的貼圖", L"錯誤", MB_OK | MB_ICONERROR);
+    }
 }
 
 void CleanD3D()
@@ -172,7 +180,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
     // 找第二個螢幕
     HMONITOR secondMon = GetSecondMonitor();
     MONITORINFO mi = { sizeof(mi) };
-    if (!secondMon || !GetMonitorInfo(secondMon, &mi)) {
+    if (!secondMon || !GetMonitorInfo(secondMon, &mi))
+    {
         MessageBox(nullptr, L"找不到第二個螢幕，將使用主螢幕。", L"警告", MB_ICONWARNING);
         secondMon = MonitorFromWindow(nullptr, MONITOR_DEFAULTTOPRIMARY);
         GetMonitorInfo(secondMon, &mi);
@@ -212,22 +221,23 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
     spine::SkeletonJson json(&attachmentLoader);
     json.setScale(0.1f);
     spine::SkeletonData* skeletonData = json.readSkeletonDataFile(jsonPath.c_str());
-    //spine::Skin* pSkin = skeletonData->findSkin("03_clothes");
-    //skeletonData->setDefaultSkin(pSkin);
+	skeletonData->setReferenceScale(0.1f);
     spine::SkeletonDrawable drawable(skeletonData);
-    drawable.usePremultipliedAlpha = true;
-    drawable.animationState->getData()->setDefaultMix(0.2f);
-    drawable.skeleton->setPosition(400, 500);
-    drawable.skeleton->setToSetupPose();
+    drawable.setSkin("default");
+    //drawable.setSkin("03_clothes");
+    drawable.getAnimationState()->getData()->setDefaultMix(0.2f);
+    drawable.setX(250);
+    drawable.setY(450);
+    drawable.getSkeleton()->setToSetupPose();
     if (bTest)
     {
-        drawable.animationState->setAnimation(0, "01_05_in", true);
-        drawable.animationState->addAnimation(0, "01_05_in", true, 0);
+        drawable.getAnimationState()->setAnimation(0, "01_05_in", true);
+        drawable.getAnimationState()->addAnimation(0, "01_05_in", true, 0);
     }
     else
     {
-        drawable.animationState->setAnimation(0, "portal", true);
-        drawable.animationState->addAnimation(0, "run", true, 0);
+        drawable.getAnimationState()->setAnimation(0, "portal", true);
+        drawable.getAnimationState()->addAnimation(0, "run", true, 0);
     }
     drawable.update(0, spine::Physics_Update);
 	g_pSkeletonDrawable = &drawable;
@@ -252,8 +262,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
             {
                 // 🔁 Render to texture
                 HRESULT hr = g_pd3dDevice->SetRenderTarget(0, renderSurface);
-                hr = g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, 0x0, 1.0f, 0);
-                if (SUCCEEDED(g_pd3dDevice->BeginScene())) {
+                hr = g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, 0xffffffff, 1.0f, 0);
+                if (SUCCEEDED(g_pd3dDevice->BeginScene()))
+                {
                     // 🔷 在 render target 上畫圖形
                     g_pSkeletonDrawable->draw(g_pd3dDevice);
                     g_pd3dDevice->EndScene();
@@ -265,30 +276,32 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
                 g_pd3dDevice->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 100), 1.0f, 0);
                 if (SUCCEEDED(g_pd3dDevice->BeginScene()))
                 {
-                    sprite->Begin(D3DXSPRITE_ALPHABLEND);
-
                     // 目前視窗大小
                     float winWidth = (float)windowWidth;
                     float winHeight = (float)windowHeight;
                     // 計算寬高比例（保持不變形）
 					float scale = winWidth / tetureWidth < winHeight / tetureHeight ? winWidth / tetureWidth : winHeight / tetureHeight;
+                    scale = 1;
                     //scale *= 0.5f;
+                    float scaleX = scale;// (winWidth - 2) / tetureWidth;// 
+                    float scaleY = scale;// (winHeight - 2) / tetureHeight;// 
                     // 計算實際縮放後大小
-                    float scaledWidth = tetureWidth * scale;
-                    float scaledHeight = tetureHeight * scale;
+                    float scaledWidth = tetureWidth * scaleX;
+                    float scaledHeight = tetureHeight * scaleY;
                     // 計算置中偏移量
-                    float offsetX = 0.0f;
-                    float offsetY = 0.0f;
+                    float offsetX = (winWidth - scaledWidth) / 2.0f;// 1.0f;// 
+					float offsetY = (winHeight - scaledHeight) / 2.0f;// 1.0f;// 
                     // 建立 2D 轉換矩陣
                     D3DXMATRIX matTrans, matScale;
-                    D3DXMatrixScaling(&matScale, scale, scale, 1.0f);
+                    D3DXMatrixScaling(&matScale, scaleX, scaleY, 1.0f);
                     D3DXMatrixTranslation(&matTrans, offsetX, offsetY, 0.0f);
                     D3DXMATRIX matFinal = matScale * matTrans;
+
+                    sprite->Begin(D3DXSPRITE_ALPHABLEND);
                     // 套用變換矩陣
                     sprite->SetTransform(&matFinal);
                     // 畫整張貼圖
                     sprite->Draw(renderTexture, nullptr, nullptr, nullptr, D3DCOLOR_XRGB(255, 255, 255));
-
                     sprite->End();
 
                     g_pd3dDevice->EndScene();

@@ -66,21 +66,28 @@ namespace spine
 	{
 	public:
 		SkeletonDrawable(SkeletonData *skeletonData, AnimationStateData *animationStateData = nullptr);
-
 		~SkeletonDrawable();
 
 		void update(float delta, Physics physics);
-
 		void draw(LPDIRECT3DDEVICE9 d3ddev);
 
-		Skeleton *skeleton;
-		AnimationState *animationState;
-		bool usePremultipliedAlpha;
+		bool setSkin(std::string skinName);
+
+		Skeleton* getSkeleton() { return m_pSkeleton; }
+		AnimationState* getAnimationState() { return m_pAnimationState; }
+
+		void setX(float fX) { m_pSkeleton->setX(fX); }
+		float getX() { return m_pSkeleton->getX(); }
+		void setY(float fY) { m_pSkeleton->setY(fY); }
+		float getY() { return m_pSkeleton->getY(); }
 
 	protected:
 		void renderGeometry(LPDIRECT3DDEVICE9 d3ddev, LPDIRECT3DTEXTURE9 pTexture, DX9VERTEX* pvVertices, size_t vertexCnt, int* pvIndices, int indexCnt);
 
 	private:
+		SkeletonData* m_pSkeletonData;
+		Skeleton* m_pSkeleton;
+		AnimationState* m_pAnimationState;
 		CUSTOMVERTEX* m_ptmpVetrtex;
 		bool m_ownsAnimationStateData;
 		Vector<DX9VERTEX> m_vVertices;

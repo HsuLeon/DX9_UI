@@ -42,31 +42,44 @@ using namespace spine;
 SkeletonRenderer* skeletonRenderer = nullptr;
 
 SkeletonDrawable::SkeletonDrawable(SkeletonData *skeletonData, AnimationStateData *animationStateData)
+	: m_pSkeletonData(skeletonData)
 {
-	Bone::setYDown(true);
-	skeleton = new (__FILE__, __LINE__) Skeleton(skeletonData);
-
 	m_ptmpVetrtex = new CUSTOMVERTEX[8192];
+
+	Bone::setYDown(true);
+	m_pSkeleton = new (__FILE__, __LINE__) Skeleton(skeletonData);
 
 	m_ownsAnimationStateData = animationStateData == 0;
 	if (m_ownsAnimationStateData) animationStateData = new (__FILE__, __LINE__) AnimationStateData(skeletonData);
-	animationState = new (__FILE__, __LINE__) AnimationState(animationStateData);
+	m_pAnimationState = new (__FILE__, __LINE__) AnimationState(animationStateData);
 }
 
 SkeletonDrawable::~SkeletonDrawable()
 {
-	if (m_ownsAnimationStateData) delete animationState->getData();
-	delete animationState;
-	delete skeleton;
-	delete m_ptmpVetrtex;
+	if (m_pAnimationState)
+	{
+		if (m_ownsAnimationStateData) delete m_pAnimationState->getData();
+		delete m_pAnimationState;
+		m_pAnimationState = 0x0;
+	}
+	if (m_pSkeleton)
+	{
+		delete m_pSkeleton;
+		m_pSkeleton = 0x0;
+	}
+	if (m_ptmpVetrtex)
+	{
+		delete m_ptmpVetrtex;
+		m_ptmpVetrtex = 0x0;
+	}
 }
 
 void SkeletonDrawable::update(float delta, Physics physics)
 {
-	animationState->update(delta);
-	animationState->apply(*skeleton);
-	skeleton->update(delta);
-	skeleton->updateWorldTransform(physics);
+	m_pAnimationState->update(delta);
+	m_pAnimationState->apply(*m_pSkeleton);
+	m_pSkeleton->update(delta);
+	m_pSkeleton->updateWorldTransform(physics);
 }
 
 inline void toDX9Color(uint32_t color, DX9COLOR *dx9Color)
@@ -80,7 +93,7 @@ inline void toDX9Color(uint32_t color, DX9COLOR *dx9Color)
 void SkeletonDrawable::draw(LPDIRECT3DDEVICE9 d3ddevice)
 {
 	if (!skeletonRenderer) skeletonRenderer = new (__FILE__, __LINE__) SkeletonRenderer();
-	RenderCommand *command = skeletonRenderer->render(*skeleton);
+	RenderCommand *command = skeletonRenderer->render(*m_pSkeleton);
 	while (command)
 	{
 		float* positions = command->positions;
@@ -100,7 +113,9 @@ void SkeletonDrawable::draw(LPDIRECT3DDEVICE9 d3ddevice)
 		m_vIndices.clear();
 		uint16_t* indices = command->indices;
 		for (int ii = 0; ii < command->numIndices; ii++)
+		{
 			m_vIndices.add(indices[ii]);
+		}
 
 		BlendMode blendMode = command->blendMode;
 		LPDIRECT3DTEXTURE9 pTexture = (LPDIRECT3DTEXTURE9)command->texture;
@@ -136,6 +151,14 @@ void SkeletonDrawable::draw(LPDIRECT3DDEVICE9 d3ddevice)
 		renderGeometry(d3ddevice, pTexture, m_vVertices.buffer(), m_vVertices.size(), m_vIndices.buffer(), command->numIndices);
 		command = command->next;
 	}
+}
+
+bool SkeletonDrawable::setSkin(std::string skinName)
+{
+	spine::Skin* pSkin = m_pSkeletonData->findSkin(skinName.c_str());
+	if (!pSkin) return false;
+	m_pSkeletonData->setDefaultSkin(pSkin);
+	return true;
 }
 
 void SkeletonDrawable::renderGeometry(LPDIRECT3DDEVICE9 d3ddev, LPDIRECT3DTEXTURE9 pTexture, DX9VERTEX* pvVertices, size_t vertexCnt, int* pvIndices, int indexCnt)
